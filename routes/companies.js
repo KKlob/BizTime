@@ -21,7 +21,10 @@ router.get("/:code", async function (req, res, next) {
     try {
         const results = await db.query('SELECT * FROM companies WHERE code=$1', [req.params.code]);
         if (results.rows[0]) {
-            return res.json({ company: results.rows[0] })
+            const comp = results.rows[0];
+            const invoices = await db.query(`SELECT * FROM invoices WHERE comp_code=$1`, [comp.code]);
+            comp.invoices = invoices.rows;
+            return res.json({ company: comp });
         } else {
             throw new ExpressError("Company not found", 404);
         }
@@ -45,7 +48,7 @@ router.post("/", async function (req, res, next) {
 });
 
 // edit existing company
-router.patch("/:code", async function (req, res, next) {
+router.put("/:code", async function (req, res, next) {
     try {
         const { name, description } = req.body;
         const result = await db.query(
