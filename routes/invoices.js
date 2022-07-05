@@ -54,15 +54,44 @@ router.post("/", async function (req, res, next) {
 // update existing invoice
 router.put("/:id", async function (req, res, next) {
     try {
-        const { amt } = req.body;
-        const result = await db.query(
-            `UPDATE invoices SET amt=$1
-            WHERE id=$2
-            RETURNING id, comp_code, amt, paid, add_date, paid_date`, [amt, req.params.id]);
+        const exists = await db.query(`SELECT * FROM invoices WHERE id=$1`, [req.params.id]);
+        if (exists.rowCount) {
+            // invoice exists
+            let inv = exists.rows[0];
+            if (Object.keys(req.body).includes('paid') && Object.keys(req.body).includes('amt')) {
+                // check that request has valid keys
+                const { amt, paid } = req.body;
+                if (inv.paid && paid == false) {
+                    // invoice is paid, update to not paid, clear paid_date
+                    const result = await db.query(
+                        `UPDATE invoices SET amt=$1, paid=$2, paid_date=$3
+                        WHERE id=$4
+                        RETURNING id, comp_code, amt, paid, add_date, paid_date`, [amt, paid, null, req.params.id]);
 
-        if (result.rows[0]) {
-            return res.json({ invoice: result.rows[0] });
+                    return res.json({ invoice: result.rows[0] });
+                } else if (inv.paid == false && paid == true) {
+                    // invoice is not paid, update to paid, set paid date
+                    let date = new Date();
+                    const result = await db.query(
+                        `UPDATE invoices SET amt=$1, paid=$2, paid_date=$3
+                        WHERE id=$4
+                        RETURNING id, comp_code, amt, paid, add_date, paid_date`, [amt, paid, date, req.params.id]);
+
+                    return res.json({ invoice: result.rows[0] });
+                } else {
+                    const result = await db.query(
+                        `UPDATE invoices SET amt=$1
+                        WHERE id=$2
+                        RETURNING id, comp_code, amt, paid, add_date, paid_date`, [amt, req.params.id]);
+
+                    return res.json({ invoice: result.rows[0] });
+                }
+
+            } else {
+                throw new ExpressError("Needs to be passed JSON with keys 'amt' and 'paid'", 400);
+            }
         } else {
+            // invoice does not exist
             throw new ExpressError("Invoice not found", 404);
         }
 

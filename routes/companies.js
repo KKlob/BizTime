@@ -20,12 +20,25 @@ router.get("/", async function (req, res, next) {
 // get single company
 router.get("/:code", async function (req, res, next) {
     try {
-        const results = await db.query('SELECT * FROM companies WHERE code=$1', [req.params.code]);
-        if (results.rows[0]) {
-            const comp = results.rows[0];
-            const invoices = await db.query(`SELECT * FROM invoices WHERE comp_code=$1`, [comp.code]);
-            comp.invoices = invoices.rows;
-            return res.json({ company: comp });
+        const results = await db.query(
+            `SELECT c.code, c.name, c.description, i.industry
+                FROM companies AS c 
+                    LEFT JOIN company_industry AS ci 
+                        ON c.code = ci.comp_code 
+                    LEFT JOIN industries AS i
+                        ON ci.industry_code = i.code
+                WHERE c.code = $1`, [req.params.code]);
+        if (results.rowCount) {
+            let { code, name, description } = results.rows[0];
+            const industries = results.rows.map(r => r.industry);
+            const invResp = await db.query(`SELECT * FROM invoices WHERE comp_code=$1`, [code]);
+            if (invResp.rowCount) {
+                const invoices = invResp.rows;
+
+                return res.json({ company: { code: code, name: name, description: description, industries: industries, invoices: invoices } });
+            } else {
+                return res.json({ company: { code: code, name: name, description: description, industries: industries } });
+            }
         } else {
             throw new ExpressError("Company not found", 404);
         }

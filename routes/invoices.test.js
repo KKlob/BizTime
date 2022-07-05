@@ -113,11 +113,12 @@ describe("Invoice routes", function () {
     test("Edit existing invoice", async function () {
         const resp = await request(app)
             .put(`/invoices/${invoice.id}`)
-            .send({ amt: 199.99 });
+            .send({ amt: 299.99, paid: true });
 
         expect(resp.statusCode).toEqual(200);
         expect(resp.body.invoice.comp_code).toEqual('msft');
-        expect(resp.body.invoice.amt).toEqual(199.99);
+        expect(resp.body.invoice.amt).toEqual(299.99);
+        expect(resp.body.invoice.paid_date).toEqual(expect.any(String));
     });
 
     test("Edit existing invoice, invalid request", async function () {
