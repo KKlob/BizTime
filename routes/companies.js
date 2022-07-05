@@ -43,7 +43,8 @@ router.post("/", async function (req, res, next) {
             RETURNING code, name, description`, [code, name, description]);
         return res.status(201).json({ company: results.rows[0] });
     } catch (e) {
-        next(e);
+        let err = new ExpressError(e.message, 400);
+        next(err);
     }
 });
 

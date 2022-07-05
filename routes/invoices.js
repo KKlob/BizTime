@@ -44,9 +44,10 @@ router.post("/", async function (req, res, next) {
         const invoice = result.rows[0];
         const comp = await db.query(`SELECT * FROM companies WHERE code=$1`, [comp_code]);
         invoice.company = comp.rows[0];
-        return res.json({ invoice: invoice });
+        return res.status(201).json({ invoice: invoice });
     } catch (e) {
-        next(e);
+        let err = new ExpressError(e.message, 400);
+        next(err);
     }
 });
 
